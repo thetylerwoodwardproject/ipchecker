@@ -55,10 +55,6 @@ Works on any modern browser (Chrome, Firefox, Safari, Edge). Tested on desktop a
 - All requests are made directly from your browser to the third-party APIs listed above
 - Review their privacy policies if concerned about data collection
 
-## License
-
-© 2026 The Tyler Woodward Project. All rights reserved.
-
 ## Author
 
 Built by Tyler Woodward. Part of the [tools.tylerwoodward.me](https://tools.tylerwoodward.me) suite.
