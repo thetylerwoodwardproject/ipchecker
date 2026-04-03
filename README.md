@@ -2,6 +2,8 @@
 
 A lightweight, single-page tool that displays your public and local network information in real time. Perfect for quick network diagnostics, geolocation lookups, and system profiling.
 
+See a live demo at: https://tools.tylerwoodward.me/ip
+
 ## Features
 
 - **Public IP Information**: Instantly retrieves your public IPv4 and IPv6 addresses
