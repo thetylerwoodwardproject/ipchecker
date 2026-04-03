@@ -1,0 +1,627 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>IP Checker</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #111214;
+      --bg-card: #171717;
+      --border: #1e2025;
+      --accent: #3cae32;
+      --accent-dim: rgba(60, 174, 50, 0.12);
+      --text: #e8e8e8;
+      --text-muted: #7a7f87;
+      --radius: 8px;
+      --shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+    }
+
+    body {
+      background-color: var(--bg);
+      color: var(--text);
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      font-size: 16px;
+      font-variation-settings: 'wdth' 110;
+      letter-spacing: -0.1px;
+      min-height: 100vh;
+      padding: 32px 16px 48px;
+    }
+
+    header { text-align: center; margin: 0 auto 40px; max-width: 600px; }
+    header h1 { font-size: 28px; font-weight: 700; letter-spacing: -0.2px; color: #fff; }
+    header h1 span { color: var(--accent); }
+    header p { margin-top: 8px; color: var(--text-muted); font-size: 14px; }
+
+    .card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      width: 100%;
+      max-width: 600px;
+      overflow: hidden;
+      margin: 0 auto;
+    }
+
+    /* ── IP Hero ── */
+    .ip-hero {
+      padding: 28px 28px 24px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+
+    .ip-icon {
+      width: 44px; height: 44px;
+      background: var(--accent-dim);
+      border: 1px solid rgba(60, 174, 50, 0.25);
+      border-radius: var(--radius);
+      display: flex; align-items: center; justify-content: center;
+      flex-shrink: 0;
+    }
+    .ip-icon svg { width: 22px; height: 22px; stroke: var(--accent); }
+
+    .ip-label {
+      font-size: 11px; font-weight: 600; text-transform: uppercase;
+      letter-spacing: 0.08em; color: var(--text-muted); margin-bottom: 4px;
+    }
+
+    .ip-value {
+      font-size: 26px; font-weight: 700; letter-spacing: -0.3px;
+      color: #fff; font-variant-numeric: tabular-nums;
+      display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+    }
+    .ip-value.loading { color: var(--text-muted); font-size: 18px; font-weight: 400; }
+
+    .copy-btn {
+      background: var(--accent-dim);
+      border: 1px solid rgba(60, 174, 50, 0.2);
+      border-radius: 6px; color: var(--accent); cursor: pointer;
+      padding: 4px 8px; font-size: 11px; font-weight: 600;
+      font-family: inherit; text-transform: uppercase;
+      letter-spacing: 0.06em; transition: background 0.15s;
+      white-space: nowrap; display: none;
+    }
+    .copy-btn:hover { background: rgba(60, 174, 50, 0.2); }
+    .copy-btn.copied { color: #fff; background: var(--accent); border-color: var(--accent); }
+
+    /* ── Section labels ── */
+    .section-label {
+      padding: 10px 28px 4px;
+      font-size: 10px; font-weight: 700; text-transform: uppercase;
+      letter-spacing: 0.1em; color: var(--text-muted); opacity: 0.5;
+      border-top: 1px solid var(--border);
+    }
+
+    /* ── Detail rows ── */
+    .detail-row {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 12px 28px; border-bottom: 1px solid var(--border); gap: 16px;
+    }
+    .detail-row:last-of-type { border-bottom: none; }
+
+    .detail-key {
+      font-size: 13px; color: var(--text-muted); font-weight: 500;
+      display: flex; align-items: center; gap: 8px;
+      white-space: nowrap; flex-shrink: 0;
+    }
+    .detail-key svg { width: 14px; height: 14px; stroke: var(--text-muted); opacity: 0.7; flex-shrink: 0; }
+
+    .detail-val {
+      font-size: 13px; font-weight: 500; color: var(--text);
+      text-align: right; word-break: break-all; font-variant-numeric: tabular-nums;
+    }
+    .detail-val.loading-cell {
+      height: 13px; border-radius: 4px; background: var(--border);
+      width: 130px; animation: pulse 1.4s ease-in-out infinite;
+    }
+
+    @keyframes pulse { 0%, 100% { opacity: 0.4; } 50% { opacity: 0.9; } }
+
+    /* ── Badges ── */
+    .badge {
+      display: inline-block; padding: 2px 8px; border-radius: 4px;
+      font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em;
+    }
+    .badge-warn  { background: rgba(255,190,50,0.12); border: 1px solid rgba(255,190,50,0.25); color: #f5c842; }
+    .badge-ok    { background: var(--accent-dim); border: 1px solid rgba(60,174,50,0.25); color: var(--accent); }
+    .badge-muted { background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.08); color: var(--text-muted); }
+
+    /* ── Refresh ── */
+    .refresh-btn {
+      background: transparent; border: 1px solid var(--border);
+      border-radius: var(--radius); color: var(--text-muted); cursor: pointer;
+      padding: 10px 18px; font-size: 13px; font-weight: 600; font-family: inherit;
+      transition: color 0.15s, border-color 0.15s, background 0.15s;
+      display: flex; align-items: center; justify-content: center; gap: 6px;
+      margin: 16px 28px; width: calc(100% - 56px);
+    }
+    .refresh-btn svg { width: 14px; height: 14px; stroke: currentColor; }
+    .refresh-btn:hover { color: var(--accent); border-color: rgba(60,174,50,0.4); background: var(--accent-dim); }
+    .refresh-btn.spinning svg { animation: spin 0.8s linear infinite; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    .error-msg { color: #e05858; font-size: 13px; padding: 12px 28px; display: none; }
+
+    /* ── Timestamp ── */
+    .timestamp {
+      text-align: center; font-size: 11px; color: var(--text-muted);
+      margin: 20px auto 0; max-width: 600px; opacity: 0.6;
+    }
+
+    /* ── Credits ── */
+    .credits {
+      max-width: 600px;
+      margin: 28px auto 0;
+      border-top: 1px solid var(--border);
+      padding-top: 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .credits-title {
+      font-size: 10px; font-weight: 700; text-transform: uppercase;
+      letter-spacing: 0.1em; color: var(--text-muted); opacity: 0.4;
+    }
+
+    .credits-list {
+      display: flex; flex-wrap: wrap; gap: 6px;
+    }
+
+    .credit-chip {
+      display: inline-flex; align-items: center; gap: 5px;
+      background: rgba(255,255,255,0.03);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 4px 10px;
+      font-size: 11px; font-weight: 500; color: var(--text-muted);
+      text-decoration: none;
+      transition: color 0.15s, border-color 0.15s;
+    }
+    .credit-chip:hover { color: var(--text); border-color: rgba(255,255,255,0.15); }
+    .credit-chip svg { width: 11px; height: 11px; stroke: currentColor; opacity: 0.6; flex-shrink: 0; }
+
+    /* ── Logo ── */
+    .site-logo {
+      text-align: center;
+      margin: 24px auto 0;
+      max-width: 600px;
+      opacity: 0.3;
+    }
+    .site-logo img { height: 26px; width: auto; }
+
+    a { color: var(--accent); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+  </style>
+</head>
+<body>
+
+  <header>
+    <h1>IP <span>Checker</span></h1>
+    <p>Your public &amp; system network information</p>
+  </header>
+
+  <div class="card">
+
+    <!-- ── Public IP hero ── -->
+    <div class="ip-hero">
+      <div class="ip-icon">
+        <svg fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="12" cy="12" r="10"/>
+          <line x1="2" y1="12" x2="22" y2="12"/>
+          <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/>
+        </svg>
+      </div>
+      <div style="flex:1; min-width:0;">
+        <div class="ip-label">Public IPv4 Address</div>
+        <div class="ip-value loading" id="ip-display">Fetching...</div>
+      </div>
+    </div>
+
+    <!-- ── Public Network ── -->
+    <div class="section-label">Public Network</div>
+
+    <div class="detail-row">
+      <span class="detail-key">
+        <svg fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>
+        IPv6 Address
+      </span>
+      <span class="detail-val loading-cell" id="val-ipv6"></span>
+    </div>
+
+    <div class="detail-row">
+      <span class="detail-key">
+        <svg fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+        Hostname (PTR)
+      </span>
+      <span class="detail-val loading-cell" id="val-hostname"></span>
+    </div>
+
+    <div class="detail-row">
+      <span class="detail-key">
+        <svg fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="2" width="20" height="8" rx="2"/><rect x="2" y="14" width="20" height="8" rx="2"/><line x1="6" y1="6" x2="6.01" y2="6"/><line x1="6" y1="18" x2="6.01" y2="18"/></svg>
+        Network Block (CIDR)
+      </span>
+      <span class="detail-val loading-cell" id="val-network"></span>
+    </div>
+
+    <div class="detail-row">
+      <span class="detail-key">
+        <svg fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12l9-9 9 9M5 10v9a1 1 0 0 0 1 1h4v-5h4v5h4a1 1 0 0 0 1-1v-9"/></svg>
+        ISP / Org
+      </span>
+      <span class="detail-val loading-cell" id="val-org"></span>
+    </div>
+
+    <div class="detail-row">
+      <span class="detail-key">
+        <svg fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 19c-5 1.5-5-2.5-7-3m14 6v-3.87a3.37 3.37 0 0 0-.94-2.61c3.14-.35 6.44-1.54 6.44-7A5.44 5.44 0 0 0 20 4.77 5.07 5.07 0 0 0 19.91 1S18.73.65 16 2.48a13.38 13.38 0 0 0-7 0C6.27.65 5.09 1 5.09 1A5.07 5.07 0 0 0 5 4.77a5.44 5.44 0 0 0-1.5 3.78c0 5.42 3.3 6.61 6.44 7A3.37 3.37 0 0 0 9 18.13V22"/></svg>
+        ASN
+      </span>
+      <span class="detail-val loading-cell" id="val-asn"></span>
+    </div>
+
+    <div class="detail-row">
+      <span class="detail-key">
+        <svg fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M2 12h20M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
+        Location
+      </span>
+      <span class="detail-val loading-cell" id="val-location"></span>
+    </div>
+
+    <div class="detail-row">
+      <span class="detail-key">
+        <svg fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+        Timezone
+      </span>
+      <span class="detail-val loading-cell" id="val-timezone"></span>
+    </div>
+
+    <div class="detail-row">
+      <span class="detail-key">
+        <svg fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 13.5a19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 3.6 2.69h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L7.91 10a16 16 0 0 0 6 6l.92-.92a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 21.73 17z"/></svg>
+        Calling Code
+      </span>
+      <span class="detail-val loading-cell" id="val-calling"></span>
+    </div>
+
+    <div class="detail-row">
+      <span class="detail-key">
+        <svg fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+        Connection Type
+      </span>
+      <span class="detail-val loading-cell" id="val-type"></span>
+    </div>
+
+    <div class="detail-row">
+      <span class="detail-key">
+        <svg fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><line x1="1" y1="6" x2="23" y2="6"/><line x1="1" y1="18" x2="23" y2="18"/><line x1="5" y1="2" x2="5" y2="22"/><line x1="19" y1="2" x2="19" y2="22"/></svg>
+        Coordinates
+      </span>
+      <span class="detail-val loading-cell" id="val-coords"></span>
+    </div>
+
+    <!-- ── Browser & System ── -->
+    <div class="section-label">Browser &amp; System</div>
+
+    <div class="detail-row">
+      <span class="detail-key">
+        <svg fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18"/><path d="M9 21V9"/></svg>
+        Browser
+      </span>
+      <span class="detail-val loading-cell" id="val-browser"></span>
+    </div>
+
+    <div class="detail-row">
+      <span class="detail-key">
+        <svg fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
+        Platform / OS
+      </span>
+      <span class="detail-val loading-cell" id="val-os"></span>
+    </div>
+
+    <div class="detail-row">
+      <span class="detail-key">
+        <svg fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="2" width="14" height="20" rx="2"/><line x1="12" y1="18" x2="12.01" y2="18"/></svg>
+        Device Type
+      </span>
+      <span class="detail-val loading-cell" id="val-device"></span>
+    </div>
+
+    <div class="detail-row">
+      <span class="detail-key">
+        <svg fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
+        Screen Resolution
+      </span>
+      <span class="detail-val loading-cell" id="val-screen"></span>
+    </div>
+
+    <div class="detail-row">
+      <span class="detail-key">
+        <svg fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9z"/></svg>
+        Color Scheme
+      </span>
+      <span class="detail-val loading-cell" id="val-theme"></span>
+    </div>
+
+    <div class="detail-row" style="border-bottom:none;">
+      <span class="detail-key">
+        <svg fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg>
+        CPU Threads
+      </span>
+      <span class="detail-val loading-cell" id="val-cpu"></span>
+    </div>
+
+    <div class="error-msg" id="error-msg"></div>
+
+    <button class="refresh-btn" id="refresh-btn" onclick="fetchAll()">
+      <svg fill="none" viewBox="0 0 24 24" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M23 4v6h-6"/><path d="M1 20v-6h6"/>
+        <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/>
+      </svg>
+      Refresh
+    </button>
+  </div>
+
+  <div class="timestamp" id="timestamp"></div>
+
+  <!-- ── Credits ── -->
+  <div class="credits">
+    <div class="credits-title">Powered by</div>
+    <div class="credits-list">
+      <a class="credit-chip" href="https://ipapi.co" target="_blank" rel="noopener">
+        <svg fill="none" viewBox="0 0 24 24" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M2 12h20M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
+        ipapi.co — IP geolocation
+      </a>
+      <a class="credit-chip" href="https://www.ipify.org" target="_blank" rel="noopener">
+        <svg fill="none" viewBox="0 0 24 24" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/></svg>
+        ipify.org — IPv4 / IPv6 lookup
+      </a>
+      <a class="credit-chip" href="https://developers.google.com/speed/public-dns/docs/doh" target="_blank" rel="noopener">
+        <svg fill="none" viewBox="0 0 24 24" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+        Google DNS — reverse PTR lookup
+      </a>
+    </div>
+  </div>
+
+  <!-- ── Logo ── -->
+  <div class="site-logo">
+    <img src="https://tylerwoodward.me/content/images/2026/03/logo-4.png" alt="Tyler Woodward" />
+    <div style="font-size:11px; color:var(--text-muted); margin-top:10px;">
+      Vibe coded by <a href="https://tylerwoodward.me" target="_blank" rel="noopener" style="color:var(--text-muted);">Tyler Woodward</a> &nbsp;·&nbsp; © 2026 The Tyler Woodward Project, All rights reserved.
+    </div>
+  </div>
+
+  <script>
+    const F = {
+      ip:       document.getElementById('ip-display'),
+      ipv6:     document.getElementById('val-ipv6'),
+      hostname: document.getElementById('val-hostname'),
+      network:  document.getElementById('val-network'),
+      org:      document.getElementById('val-org'),
+      asn:      document.getElementById('val-asn'),
+      location: document.getElementById('val-location'),
+      timezone: document.getElementById('val-timezone'),
+      calling:  document.getElementById('val-calling'),
+      type:     document.getElementById('val-type'),
+      coords:   document.getElementById('val-coords'),
+      browser:  document.getElementById('val-browser'),
+      os:       document.getElementById('val-os'),
+      device:   document.getElementById('val-device'),
+      screen:   document.getElementById('val-screen'),
+      theme:    document.getElementById('val-theme'),
+      cpu:      document.getElementById('val-cpu'),
+    };
+
+    const errorMsg   = document.getElementById('error-msg');
+    const refreshBtn = document.getElementById('refresh-btn');
+    const tsEl       = document.getElementById('timestamp');
+
+    // ── Helpers ───────────────────────────────────────────────
+
+    function setLoading() {
+      F.ip.textContent = 'Fetching...';
+      F.ip.classList.add('loading');
+      for (const [k, el] of Object.entries(F)) {
+        if (k === 'ip') continue;
+        el.textContent = '';
+        el.classList.add('loading-cell');
+        el.innerHTML = '';
+      }
+      errorMsg.style.display = 'none';
+      refreshBtn.classList.add('spinning');
+    }
+
+    function stopLoading(el) { el.classList.remove('loading-cell'); }
+
+    function stopAllLoading() {
+      for (const [k, el] of Object.entries(F)) { if (k !== 'ip') stopLoading(el); }
+      refreshBtn.classList.remove('spinning');
+    }
+
+    function setText(el, val) { stopLoading(el); el.textContent = val || '—'; }
+    function setHTML(el, html) { stopLoading(el); el.innerHTML = html; }
+    function badge(cls, label) { return `<span class="badge ${cls}">${label}</span>`; }
+
+    // ── Reverse DNS via Google DoH ─────────────────────────────
+
+    async function reverseDNS(ip) {
+      try {
+        const reversed = ip.split('.').reverse().join('.');
+        const res = await fetch(
+          `https://dns.google/resolve?name=${reversed}.in-addr.arpa&type=PTR`,
+          { headers: { 'Accept': 'application/dns-json' } }
+        );
+        const data = await res.json();
+        if (data.Answer?.length) return data.Answer[0].data.replace(/\.$/, '');
+      } catch { /* ignore */ }
+      return null;
+    }
+
+    // ── IPv6 via ipify ─────────────────────────────────────────
+
+    async function fetchIPv6() {
+      try {
+        const res = await fetch('https://api6.ipify.org?format=json', { signal: AbortSignal.timeout(4000) });
+        const d = await res.json();
+        return d.ip || null;
+      } catch { return null; }
+    }
+
+    // ── Browser & system ──────────────────────────────────────
+
+    async function getBrowserInfo() {
+      const info = { browser: null, os: null, mobile: false };
+
+      if (navigator.userAgentData) {
+        try {
+          const h = await navigator.userAgentData.getHighEntropyValues(['platform', 'platformVersion', 'mobile', 'brands']);
+          const brand = (h.brands || navigator.userAgentData.brands || [])
+            .filter(b => !b.brand.includes('Not') && !b.brand.includes('Chromium'))
+            .sort((a, b) => b.version - a.version)[0];
+          if (brand) info.browser = `${brand.brand} ${brand.version}`;
+          info.os     = h.platform ? `${h.platform} ${h.platformVersion || ''}`.trim() : null;
+          info.mobile = h.mobile ?? navigator.userAgentData.mobile ?? false;
+        } catch { /* fall through */ }
+      }
+
+      if (!info.browser) {
+        const ua = navigator.userAgent;
+        const match =
+          ua.match(/Firefox\/([\d.]+)/)  ||
+          ua.match(/Edg\/([\d.]+)/)      ||
+          ua.match(/OPR\/([\d.]+)/)      ||
+          ua.match(/Chrome\/([\d.]+)/)   ||
+          ua.match(/Version\/([\d.]+).*Safari/);
+        if (match) {
+          const name =
+            ua.includes('Firefox') ? 'Firefox' :
+            ua.includes('Edg/')    ? 'Edge'    :
+            ua.includes('OPR/')    ? 'Opera'   :
+            ua.includes('Chrome')  ? 'Chrome'  : 'Safari';
+          info.browser = `${name} ${match[1]}`;
+        }
+      }
+
+      if (!info.os) {
+        const ua = navigator.userAgent;
+        if (ua.includes('iPhone') || ua.includes('iPad')) info.os = 'iOS';
+        else if (ua.includes('Mac OS X')) info.os = 'macOS';
+        else if (ua.includes('Windows'))  info.os = 'Windows';
+        else if (ua.includes('Android'))  info.os = 'Android';
+        else if (ua.includes('Linux'))    info.os = 'Linux';
+      }
+
+      return info;
+    }
+
+    // ── Main ─────────────────────────────────────────────────
+
+    async function fetchAll() {
+      setLoading();
+
+      const [ipv6, browserInfo] = await Promise.all([
+        fetchIPv6(),
+        getBrowserInfo(),
+      ]);
+
+      // IPv6
+      if (ipv6) setText(F.ipv6, ipv6);
+      else setHTML(F.ipv6, badge('badge-muted', 'Not detected'));
+
+      // Browser & System (synchronous data — populate immediately)
+      setText(F.browser, browserInfo.browser || '—');
+      setText(F.os, browserInfo.os || '—');
+      setHTML(F.device, browserInfo.mobile ? badge('badge-muted', 'Mobile') : badge('badge-muted', 'Desktop'));
+      setText(F.screen, `${screen.width} × ${screen.height}  ·  ${window.devicePixelRatio}x`);
+      setHTML(F.theme, window.matchMedia('(prefers-color-scheme: dark)').matches
+        ? badge('badge-muted', 'Dark') : badge('badge-muted', 'Light'));
+      setText(F.cpu, navigator.hardwareConcurrency ? `${navigator.hardwareConcurrency} logical cores` : '—');
+
+      // Public IP
+      try {
+        const res = await fetch('https://ipapi.co/json/', { headers: { 'Accept': 'application/json' } });
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const d = await res.json();
+        if (d.error) throw new Error(d.reason || 'API error');
+
+        F.ip.classList.remove('loading');
+        F.ip.innerHTML = '';
+        F.ip.appendChild(document.createTextNode(d.ip));
+        const copyBtn = document.createElement('button');
+        copyBtn.className = 'copy-btn';
+        copyBtn.textContent = 'Copy';
+        copyBtn.style.display = 'inline-block';
+        copyBtn.addEventListener('click', () => {
+          navigator.clipboard.writeText(d.ip).then(() => {
+            copyBtn.textContent = 'Copied!';
+            copyBtn.classList.add('copied');
+            setTimeout(() => { copyBtn.textContent = 'Copy'; copyBtn.classList.remove('copied'); }, 1800);
+          });
+        });
+        F.ip.appendChild(copyBtn);
+
+        // PTR lookup (async — updates when ready)
+        setText(F.hostname, '…');
+        reverseDNS(d.ip).then(ptr => setText(F.hostname, ptr || 'No PTR record'));
+
+        setText(F.network, d.network || '—');
+        setText(F.org, d.org || '—');
+        setText(F.asn, d.asn || '—');
+
+        const flag = d.country_code
+          ? String.fromCodePoint(...[...d.country_code].map(c => 0x1F1E6 - 65 + c.charCodeAt(0)))
+          : '';
+        const loc = [d.city, d.region, d.country_name].filter(Boolean).join(', ');
+        setText(F.location, flag ? `${flag}  ${loc}` : loc || '—');
+
+        setText(F.timezone, d.timezone || '—');
+        setText(F.calling, d.country_calling_code || '—');
+        setHTML(F.type, d.proxy ? badge('badge-warn', 'Proxy / VPN') : badge('badge-ok', 'Residential / ISP'));
+
+        if (d.latitude && d.longitude) {
+          const lat = parseFloat(d.latitude).toFixed(4);
+          const lon = parseFloat(d.longitude).toFixed(4);
+          setHTML(F.coords, `<a href="https://www.google.com/maps?q=${lat},${lon}" target="_blank" rel="noopener">${lat}, ${lon} ↗</a>`);
+        } else {
+          setText(F.coords, '—');
+        }
+
+        stopAllLoading();
+        tsEl.textContent = `Last updated: ${new Date().toLocaleTimeString()}`;
+
+      } catch {
+        // Fallback: ipify for bare IP
+        try {
+          const r2 = await fetch('https://api.ipify.org?format=json');
+          const d2 = await r2.json();
+          F.ip.classList.remove('loading');
+          F.ip.textContent = d2.ip;
+          for (const [k, el] of Object.entries(F)) {
+            if (!['ip','ipv6','browser','os','device','screen','theme','cpu'].includes(k)) {
+              setText(el, 'Unavailable');
+            }
+          }
+          stopAllLoading();
+          tsEl.textContent = `Last updated: ${new Date().toLocaleTimeString()} (limited data)`;
+        } catch {
+          stopAllLoading();
+          F.ip.textContent = 'Error';
+          errorMsg.textContent = 'Could not reach IP lookup APIs. Check your connection.';
+          errorMsg.style.display = 'block';
+        }
+      }
+    }
+
+    fetchAll();
+  </script>
+</body>
+</html>
