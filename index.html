@@ -396,7 +396,7 @@
   <div class="site-logo">
     <img src="https://tylerwoodward.me/content/images/2026/03/logo-4.png" alt="Tyler Woodward" />
     <div style="font-size:11px; color:var(--text-muted); margin-top:10px;">
-      Vibe coded by <a href="https://tylerwoodward.me" target="_blank" rel="noopener" style="color:var(--text-muted);">Tyler Woodward</a> &nbsp;·&nbsp; © 2026 The Tyler Woodward Project, All rights reserved.
+      Vibe coded by <a href="https://tylerwoodward.me" target="_blank" rel="noopener" style="color:var(--text-muted);">Tyler Woodward</a> &nbsp;·&nbsp; Grab the code from my <a href="https://github.com/thetylerwoodwardproject/ipchecker/" target="_blank" rel="noopener" style="color:var(--text-muted);">Github</a>
     </div>
   </div>
 
@@ -466,6 +466,16 @@
       return null;
     }
 
+    // ── IPv4 via ipify (forces IPv4 transport) ────────────────
+
+    async function fetchIPv4() {
+      try {
+        const res = await fetch('https://api4.ipify.org?format=json', { signal: AbortSignal.timeout(4000) });
+        const d = await res.json();
+        return d.ip || null;
+      } catch { return null; }
+    }
+
     // ── IPv6 via ipify ─────────────────────────────────────────
 
     async function fetchIPv6() {
@@ -528,7 +538,8 @@
     async function fetchAll() {
       setLoading();
 
-      const [ipv6, browserInfo] = await Promise.all([
+      const [ipv4, ipv6, browserInfo] = await Promise.all([
+        fetchIPv4(),
         fetchIPv6(),
         getBrowserInfo(),
       ]);
@@ -548,30 +559,39 @@
 
       // Public IP
       try {
-        const res = await fetch('https://ipapi.co/json/', { headers: { 'Accept': 'application/json' } });
+        const ipapiUrl = ipv4 ? `https://ipapi.co/${ipv4}/json/` : 'https://ipapi.co/json/';
+        const res = await fetch(ipapiUrl, { headers: { 'Accept': 'application/json' } });
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         const d = await res.json();
         if (d.error) throw new Error(d.reason || 'API error');
 
+        // Use explicitly-fetched IPv4; fall back to d.ip only if it's dotted-decimal
+        const isIPv4 = ip => /^\d{1,3}(\.\d{1,3}){3}$/.test(ip);
+        const resolvedIPv4 = ipv4 || (isIPv4(d.ip) ? d.ip : null);
+
         F.ip.classList.remove('loading');
         F.ip.innerHTML = '';
-        F.ip.appendChild(document.createTextNode(d.ip));
-        const copyBtn = document.createElement('button');
-        copyBtn.className = 'copy-btn';
-        copyBtn.textContent = 'Copy';
-        copyBtn.style.display = 'inline-block';
-        copyBtn.addEventListener('click', () => {
-          navigator.clipboard.writeText(d.ip).then(() => {
-            copyBtn.textContent = 'Copied!';
-            copyBtn.classList.add('copied');
-            setTimeout(() => { copyBtn.textContent = 'Copy'; copyBtn.classList.remove('copied'); }, 1800);
+        if (resolvedIPv4) {
+          F.ip.appendChild(document.createTextNode(resolvedIPv4));
+          const copyBtn = document.createElement('button');
+          copyBtn.className = 'copy-btn';
+          copyBtn.textContent = 'Copy';
+          copyBtn.style.display = 'inline-block';
+          copyBtn.addEventListener('click', () => {
+            navigator.clipboard.writeText(resolvedIPv4).then(() => {
+              copyBtn.textContent = 'Copied!';
+              copyBtn.classList.add('copied');
+              setTimeout(() => { copyBtn.textContent = 'Copy'; copyBtn.classList.remove('copied'); }, 1800);
+            });
           });
-        });
-        F.ip.appendChild(copyBtn);
-
-        // PTR lookup (async — updates when ready)
-        setText(F.hostname, '…');
-        reverseDNS(d.ip).then(ptr => setText(F.hostname, ptr || 'No PTR record'));
+          F.ip.appendChild(copyBtn);
+          // PTR lookup (async — updates when ready)
+          setText(F.hostname, '…');
+          reverseDNS(resolvedIPv4).then(ptr => setText(F.hostname, ptr || 'No PTR record'));
+        } else {
+          setHTML(F.ip, badge('badge-muted', 'IPv4 not available'));
+          setText(F.hostname, '—');
+        }
 
         setText(F.network, d.network || '—');
         setText(F.org, d.org || '—');
